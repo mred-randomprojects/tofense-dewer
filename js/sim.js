@@ -60,6 +60,7 @@ export function createBattle(levelN, towerStats, slots) {
     enemies: [],
     shells: [],
     kills: 0,
+    bossKills: 0,
     nextId: 1,
     events: [],
     pending: [],
@@ -163,10 +164,10 @@ export function step(b) {
     }
     if (!target) continue;
     t.cooldown = st.cooldown;
-    if (t.type === "mortar") {
+    if (st.shellTicks) {
       // lob a shell at where the target will be when it lands
       const land = pointAt(target.dist + target.speed * (1 - target.slow) * st.shellTicks);
-      b.shells.push({ id: b.nextId++, x0: t.x, y0: t.y, x: land.x, y: land.y, t: 0, life: st.shellTicks, damage: st.damage, splash: st.splash });
+      b.shells.push({ id: b.nextId++, type: t.type, x0: t.x, y0: t.y, x: land.x, y: land.y, t: 0, life: st.shellTicks, damage: st.damage, splash: st.splash });
       b.events.push({ type: "lob", tower: t.id, x0: t.x, y0: t.y, x1: land.x, y1: land.y });
     } else {
       const dealt = hit(b, target, st.damage, st.piercing);
@@ -185,7 +186,7 @@ export function step(b) {
     for (const e of b.enemies) {
       if (e.hp > 0 && (e.x - s.x) ** 2 + (e.y - s.y) ** 2 <= s.splash * s.splash) hit(b, e, s.damage, true);
     }
-    b.events.push({ type: "boom", x: s.x, y: s.y, splash: s.splash });
+    b.events.push({ type: "boom", tower: s.type, x: s.x, y: s.y, splash: s.splash });
   }
   b.shells = b.shells.filter((s) => s.t < s.life);
 
@@ -193,6 +194,7 @@ export function step(b) {
   for (const e of b.enemies) {
     if (e.hp <= 0 && e.hp !== -Infinity) {
       b.kills += 1;
+      if (e.kind === "boss") b.bossKills += 1;
       b.events.push({ type: "kill", kind: e.kind, x: e.x, y: e.y });
     }
   }

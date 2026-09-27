@@ -1,21 +1,31 @@
-// The player's persistent progress: money, cleared levels, Workshop upgrades.
-// Pure functions over a plain object; main.js saves it to localStorage.
+// The player's persistent progress: money, cleared levels, Workshop upgrades,
+// lifetime stats and achievements. Pure functions over a plain object;
+// main.js saves it to localStorage.
 
-import { TOWERS, TOWER_IDS, COMMAND, levelSpec } from "./data.js";
+import { TOWERS, TOWER_IDS, COMMAND, ACHIEVEMENTS, levelSpec } from "./data.js";
 
 export function newProfile() {
   const towers = {};
   for (const id of TOWER_IDS) {
     towers[id] = { unlocked: TOWERS[id].unlockCost === 0, upgrades: Object.fromEntries(Object.keys(TOWERS[id].upgrades).map((k) => [k, 0])) };
   }
-  return { version: 1, money: 0, maxCleared: 0, clears: {}, command: 0, towers };
+  return {
+    version: 2,
+    money: 0,
+    maxCleared: 0,
+    clears: {},
+    command: 0,
+    towers,
+    stats: { kills: 0, bosses: 0, played: 0, wins: 0, earned: 0, flawlessBest: 0 },
+    achievements: {}, // id -> unlocked timestamp (ms)
+  };
 }
 
 // Fill in anything added to the game since this save was made.
 export function migrate(p) {
   const fresh = newProfile();
-  if (!p || typeof p !== "object") return fresh;
-  const out = { ...fresh, ...p, towers: { ...fresh.towers } };
+  if (!p || typeof p !== "object" || p.version !== 2) return fresh;
+  const out = { ...fresh, ...p, towers: { ...fresh.towers }, stats: { ...fresh.stats, ...p.stats }, achievements: { ...p.achievements } };
   for (const id of TOWER_IDS) {
     const t = p.towers?.[id];
     if (t) out.towers[id] = { unlocked: Boolean(t.unlocked) || fresh.towers[id].unlocked, upgrades: { ...fresh.towers[id].upgrades, ...t.upgrades } };
@@ -23,15 +33,34 @@ export function migrate(p) {
   return out;
 }
 
+/* ---------- bonuses from achievements ---------- */
+
+export function bonuses(p) {
+  const b = { damage: 0, income: 0 };
+  for (const a of ACHIEVEMENTS) {
+    if (!(a.id in p.achievements)) continue;
+    b.damage += a.bonus.damage ?? 0;
+    b.income += a.bonus.income ?? 0;
+  }
+  return b;
+}
+
 export function slots(p) {
   return COMMAND.base + p.command;
 }
 
 export function towerStats(p) {
+  const dmg = 1 + bonuses(p).damage;
   const out = {};
-  for (const id of TOWER_IDS) if (p.towers[id].unlocked) out[id] = TOWERS[id].stats(p.towers[id].upgrades);
+  for (const id of TOWER_IDS) {
+    if (!p.towers[id].unlocked) continue;
+    const st = TOWERS[id].stats(p.towers[id].upgrades);
+    out[id] = { ...st, damage: st.damage * dmg };
+  }
   return out;
 }
+
+/* ---------- shop ---------- */
 
 export function upgradeCost(p, towerId, key) {
   const lvl = p.towers[towerId].upgrades[key];
@@ -68,16 +97,47 @@ export function buyCommand(p) {
   return true;
 }
 
-// Paid only when a level is won. First clear pays double.
+/* ---------- levels ---------- */
+
+// Paid only when a level is won. First clear pays double; achievements add income %.
 export function rewardFor(p, levelN) {
-  const base = levelSpec(levelN).reward;
-  return p.clears[levelN] ? base : base * 2;
+  const base = levelSpec(levelN).reward * (p.clears[levelN] ? 1 : 2);
+  return Math.max(1, Math.floor(base * (1 + bonuses(p).income)));
 }
 
-export function recordWin(p, levelN) {
-  const reward = rewardFor(p, levelN);
+// Fold a finished battle into the profile. Returns { reward } (0 on a loss).
+export function recordBattle(p, battle) {
+  const s = p.stats;
+  s.played += 1;
+  s.kills += battle.kills;
+  s.bosses += battle.bossKills ?? 0;
+  if (battle.phase !== "won") return { reward: 0 };
+  const n = battle.spec.n;
+  const reward = rewardFor(p, n);
   p.money += reward;
-  p.clears[levelN] = (p.clears[levelN] ?? 0) + 1;
-  p.maxCleared = Math.max(p.maxCleared, levelN);
-  return reward;
+  s.earned += reward;
+  s.wins += 1;
+  if (battle.lives === battle.spec.lives) s.flawlessBest = Math.max(s.flawlessBest, n);
+  p.clears[n] = (p.clears[n] ?? 0) + 1;
+  p.maxCleared = Math.max(p.maxCleared, n);
+  return { reward };
+}
+
+/* ---------- achievements ---------- */
+
+export function achievementProgress(p, a) {
+  return Math.min(a.goal, a.value(p.stats, p));
+}
+
+// Unlock everything newly earned; returns the list of new achievements.
+export function checkAchievements(p, now = Date.now()) {
+  const fresh = [];
+  for (const a of ACHIEVEMENTS) {
+    if (a.id in p.achievements) continue;
+    if (a.value(p.stats, p) >= a.goal) {
+      p.achievements[a.id] = now;
+      fresh.push(a);
+    }
+  }
+  return fresh;
 }

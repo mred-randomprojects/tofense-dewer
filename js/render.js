@@ -26,7 +26,10 @@ export function tileAtPoint(px, py) {
 // Drop PNGs with these names into assets/ and they replace the drawings.
 export const ASSETS = {
   tile_grass: { w: 64 }, tile_path: { w: 64 },
+  tower_slingshot: { w: 40 }, tower_tarpot: { w: 40 }, tower_catapult: { w: 46 },
+  tower_crossbow: { w: 44 }, tower_snare: { w: 44 }, tower_cannon: { w: 46 },
   tower_spark: { w: 44 }, tower_frost: { w: 44 }, tower_mortar: { w: 48 },
+  tower_prism: { w: 44 }, tower_stasis: { w: 44 }, tower_meteor: { w: 48 },
   enemy_slime: { w: 26 }, enemy_runner: { w: 24 }, enemy_beetle: { w: 30 }, enemy_boss: { w: 44 },
 };
 const images = {};
@@ -101,7 +104,7 @@ export function createRenderer(canvas) {
         fx.pulses.set(e.tower, fx.time);
       } else if (e.type === "boom") {
         const p = iso(e.x, e.y);
-        spawn({ kind: "ring", x: p.x, y: p.y, rx: e.splash * HALF_W * 1.414, ry: e.splash * HALF_H * 1.414, age: 0, life: 0.4, color: "#ffb347" });
+        spawn({ kind: "ring", x: p.x, y: p.y, rx: e.splash * HALF_W * 1.414, ry: e.splash * HALF_H * 1.414, age: 0, life: 0.4, color: TOWERS[e.tower]?.color ?? "#ffb347" });
         spawn({ kind: "flash", x: p.x, y: p.y - 6, r: 16, age: 0, life: 0.15 });
         for (let i = 0; i < 14; i++) {
           const a = Math.random() * Math.PI * 2;
@@ -166,7 +169,7 @@ export function createRenderer(canvas) {
       drawHover(b, ui);
       // depth-sort everything standing on the board
       const things = [];
-      for (const t of b.towers) things.push({ d: t.x + t.y, draw: () => drawTower(t, b) });
+      for (const t of b.towers) things.push({ d: t.x + t.y, draw: () => drawTower(t) });
       for (const e of b.enemies) things.push({ d: e.x + e.y, draw: () => drawEnemy(e) });
       things.sort((p, q) => p.d - q.d);
       for (const th of things) th.draw();
@@ -206,7 +209,7 @@ export function createRenderer(canvas) {
     tileOutline(h.c, h.r, ok ? (ui.armed ? "#ffd84a" : "#8fffa0") : "#ff5a6a");
     if (ok) {
       ctx.globalAlpha = 0.55;
-      drawTower({ type, x: h.c + 0.5, y: h.r + 0.5, id: -1 }, b);
+      drawTower({ type, x: h.c + 0.5, y: h.r + 0.5, id: -1 });
       ctx.globalAlpha = 1;
     }
   }
@@ -227,12 +230,11 @@ export function createRenderer(canvas) {
     ctx.stroke();
   }
 
-  function drawTower(t, b) {
+  function drawTower(t) {
     const p = iso(t.x, t.y);
     const col = TOWERS[t.type].color;
     const since = fx.time - (fx.pulses.get(t.id) ?? -9);
     const kick = since < 0.12 ? 1 - since / 0.12 : 0;
-    // shadow
     ctx.fillStyle = "rgba(0,0,0,0.28)";
     ctx.beginPath();
     ctx.ellipse(p.x, p.y + 2, 18, 9, 0, 0, Math.PI * 2);
@@ -241,41 +243,186 @@ export function createRenderer(canvas) {
       if (kick > 0) glow(p.x, p.y - 30, 14 * kick, col);
       return;
     }
-    // stone pedestal (a small iso block)
-    isoBlock(p.x, p.y, 13, 14, "#8d8fa3", "#6c6e82", "#56586b");
     const bob = Math.sin(fx.time * 2.5 + (t.id ?? 0)) * 1.5;
-    const top = p.y - 16 - 10 + bob;
-    if (t.type === "mortar") {
-      // squat barrel
-      ctx.fillStyle = "#3a3440";
-      ctx.fillRect(p.x - 8, p.y - 30 + kick * 3, 16, 14);
-      ctx.fillStyle = "#56505e";
-      ctx.beginPath();
-      ctx.ellipse(p.x, p.y - 30 + kick * 3, 8, 4, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = col;
-      ctx.fillRect(p.x - 8, p.y - 22 + kick * 3, 16, 2);
-      glow(p.x, p.y - 31, 6 + 8 * kick, col);
-      return;
-    }
-    // floating crystal
-    glow(p.x, top, 12 + 10 * kick, col);
+    const age = TOWERS[t.type].age;
+    // base: tree stump (scrap), stone block (iron), carved pedestal (arcane), white marble (prism)
+    if (age === "scrap") stump(p.x, p.y);
+    else if (age === "iron") isoBlock(p.x, p.y, 13, 12, "#9a9ca8", "#72747f", "#5b5d67");
+    else if (age === "arcane") isoBlock(p.x, p.y, 13, 14, "#8d8fa3", "#6c6e82", "#56586b");
+    else isoBlock(p.x, p.y, 13, 14, "#f2f4fa", "#c9cedb", "#aab0c0");
+    const y0 = p.y - (age === "scrap" ? 10 : 14 + (age === "iron" ? -2 : 0));
+    const D = TOWER_ART[t.type];
+    D(p.x, y0, col, kick, bob);
+  }
+
+  function stump(x, y) {
+    ctx.fillStyle = "#6b4a2e";
+    ctx.fillRect(x - 10, y - 10, 20, 10);
+    ctx.beginPath();
+    ctx.ellipse(x, y, 10, 5, 0, 0, Math.PI);
+    ctx.fill();
+    ctx.fillStyle = "#a8794a";
+    ctx.beginPath();
+    ctx.ellipse(x, y - 10, 10, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = "#7d5634";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(x, y - 10, 5, 2.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  function line(x0, y0, x1, y1, color, w) {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = w;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x1, y1);
+    ctx.stroke();
+  }
+
+  function circle(x, y, r, color) {
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function crystal(x, top, col, kick, h = 14, w = 7) {
+    glow(x, top, 12 + 10 * kick, col);
     ctx.fillStyle = col;
     ctx.beginPath();
-    ctx.moveTo(p.x, top - 14);
-    ctx.lineTo(p.x + 7, top);
-    ctx.lineTo(p.x, top + 8);
-    ctx.lineTo(p.x - 7, top);
+    ctx.moveTo(x, top - h);
+    ctx.lineTo(x + w, top);
+    ctx.lineTo(x, top + h * 0.55);
+    ctx.lineTo(x - w, top);
     ctx.closePath();
     ctx.fill();
     ctx.fillStyle = "rgba(255,255,255,0.55)";
     ctx.beginPath();
-    ctx.moveTo(p.x, top - 14);
-    ctx.lineTo(p.x - 7, top);
-    ctx.lineTo(p.x - 1, top);
+    ctx.moveTo(x, top - h);
+    ctx.lineTo(x - w, top);
+    ctx.lineTo(x - 1, top);
     ctx.closePath();
     ctx.fill();
   }
+
+  // one drawing per tower: (x, y = top of the base, color, kick 0..1 right after firing, bob)
+  const TOWER_ART = {
+    slingshot: (x, y, col, kick) => {
+      line(x, y, x, y - 10, "#8a5a32", 3);
+      line(x, y - 10, x - 6, y - 20, "#8a5a32", 3);
+      line(x, y - 10, x + 6, y - 20, "#8a5a32", 3);
+      const pull = 4 - kick * 4;
+      line(x - 6, y - 20, x, y - 14 + pull, "#c9a06a", 1.5);
+      line(x + 6, y - 20, x, y - 14 + pull, "#c9a06a", 1.5);
+      circle(x, y - 14 + pull, 2, "#777");
+    },
+    tarpot: (x, y, col, kick) => {
+      ctx.fillStyle = "#2c2a2e";
+      ctx.beginPath();
+      ctx.ellipse(x, y - 7, 9, 8, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = "#1a1512";
+      ctx.beginPath();
+      ctx.ellipse(x, y - 13, 7, 3, 0, 0, Math.PI * 2);
+      ctx.fill();
+      const bub = (Math.sin(fx.time * 5) + 1) * 1.5 + kick * 3;
+      circle(x - 2, y - 14 - bub, 2, "#3b2e22");
+      circle(x + 3, y - 13 - bub * 0.6, 1.5, "#4a3a2a");
+    },
+    catapult: (x, y, col, kick) => {
+      ctx.fillStyle = "#7a5230";
+      ctx.fillRect(x - 10, y - 5, 20, 5);
+      const a = -0.9 + kick * 1.4;
+      const ex = x + Math.cos(a) * 16;
+      const ey = y - 5 + Math.sin(a) * 16;
+      line(x - 4, y - 4, ex, ey, "#9a6a3a", 3);
+      if (kick < 0.3) circle(ex, ey - 2, 3.5, "#9aa0aa");
+    },
+    crossbow: (x, y, col, kick) => {
+      line(x - 9, y - 10, x + 9, y - 10, "#6b4a2e", 3);
+      ctx.strokeStyle = "#c0c8d8";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y - 4, 11, Math.PI * 1.15, Math.PI * 1.85);
+      ctx.stroke();
+      line(x - 9, y - 9, x, y - 10 + 3 * (1 - kick), "#e7ecff", 1);
+      line(x + 9, y - 9, x, y - 10 + 3 * (1 - kick), "#e7ecff", 1);
+    },
+    snare: (x, y, col, kick) => {
+      ctx.fillStyle = "#4a4d57";
+      ctx.fillRect(x - 7, y - 14, 14, 12);
+      for (let i = 0; i < 3; i++) {
+        ctx.strokeStyle = "#b4bccb";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(x - 4 + i * 4, y - 16 - kick * 4, 2.5, 1.8, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    },
+    cannon: (x, y, col, kick) => {
+      ctx.save();
+      ctx.translate(x, y - 8);
+      ctx.rotate(-0.6);
+      ctx.fillStyle = "#2c2f37";
+      ctx.fillRect(-3 - kick * 3, -4, 18, 8);
+      ctx.fillStyle = "#474b56";
+      ctx.fillRect(13 - kick * 3, -5, 3, 10);
+      ctx.restore();
+      circle(x - 4, y - 5, 4, "#6b4a2e");
+      if (kick > 0) glow(x + 11, y - 20, 8 * kick, "#ffb347");
+    },
+    spark: (x, y, col, kick, bob) => crystal(x, y - 12 + bob, col, kick),
+    frost: (x, y, col, kick, bob) => {
+      crystal(x - 4, y - 10 + bob, col, kick, 11, 5);
+      crystal(x + 4, y - 12 + bob, col, 0, 13, 5);
+    },
+    mortar: (x, y, col, kick) => {
+      ctx.fillStyle = "#3a3440";
+      ctx.fillRect(x - 8, y - 16 + kick * 3, 16, 14);
+      ctx.fillStyle = "#56505e";
+      ctx.beginPath();
+      ctx.ellipse(x, y - 16 + kick * 3, 8, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = col;
+      ctx.fillRect(x - 8, y - 8 + kick * 3, 16, 2);
+      glow(x, y - 17, 6 + 8 * kick, col);
+    },
+    prism: (x, y, col, kick, bob) => {
+      const hue = (fx.time * 60) % 360;
+      glow(x, y - 16 + bob, 14 + 10 * kick, `#ffffff`);
+      crystal(x, y - 14 + bob, col, kick, 20, 5);
+      ctx.fillStyle = `hsla(${hue},90%,70%,0.5)`;
+      ctx.fillRect(x - 1, y - 33 + bob, 2, 30);
+    },
+    stasis: (x, y, col, kick) => {
+      ctx.fillStyle = "#2a2140";
+      ctx.beginPath();
+      ctx.moveTo(x - 6, y);
+      ctx.lineTo(x - 4, y - 26);
+      ctx.lineTo(x, y - 32);
+      ctx.lineTo(x + 4, y - 26);
+      ctx.lineTo(x + 6, y);
+      ctx.closePath();
+      ctx.fill();
+      const pulse = 0.5 + 0.5 * Math.sin(fx.time * 3);
+      ctx.fillStyle = col;
+      for (let i = 0; i < 3; i++) ctx.fillRect(x - 1.5, y - 8 - i * 7, 3, 3);
+      glow(x, y - 18, 10 + 6 * pulse + 8 * kick, col);
+    },
+    meteor: (x, y, col, kick, bob) => {
+      ctx.strokeStyle = "#e7ecff";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(x, y - 14 + bob, 9, 4, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      glow(x, y - 16 + bob, 14 + 8 * kick, col);
+      circle(x, y - 16 + bob, 5, col);
+      circle(x - 1.5, y - 17.5 + bob, 1.8, "#ffd0d8");
+    },
+  };
 
   function isoBlock(x, y, hw, h, top, left, right) {
     const hh = hw / 2;
@@ -355,20 +502,28 @@ export function createRenderer(canvas) {
     }
   }
 
+  const SHELL_LOOK = {
+    catapult: { color: "#9aa0aa", glow: null, r: 4 },
+    cannon: { color: "#22252c", glow: "#ffb347", r: 3.5 },
+    mortar: { color: "#2b2530", glow: "#ff7a45", r: 4 },
+    meteor: { color: "#ff5a7a", glow: "#ffd0d8", r: 5 },
+  };
+
   function drawShell(sh) {
     const t = sh.t / sh.life;
     const x = sh.x0 + (sh.x - sh.x0) * t;
     const y = sh.y0 + (sh.y - sh.y0) * t;
     const p = iso(x, y);
     const height = 70 * 4 * t * (1 - t) + 28 * (1 - t);
+    const look = SHELL_LOOK[sh.type] ?? SHELL_LOOK.mortar;
     ctx.fillStyle = "rgba(0,0,0,0.25)";
     ctx.beginPath();
     ctx.ellipse(p.x, p.y, 5, 2.5, 0, 0, Math.PI * 2);
     ctx.fill();
-    glow(p.x, p.y - height, 9, "#ff7a45");
-    ctx.fillStyle = "#2b2530";
+    if (look.glow) glow(p.x, p.y - height, 9, look.glow);
+    ctx.fillStyle = look.color;
     ctx.beginPath();
-    ctx.arc(p.x, p.y - height, 4, 0, Math.PI * 2);
+    ctx.arc(p.x, p.y - height, look.r, 0, Math.PI * 2);
     ctx.fill();
   }
 

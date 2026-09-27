@@ -53,8 +53,8 @@ function noise(dur, freq, peak, delay = 0) {
   src.start(t0);
 }
 
-export const shot = (kind) =>
-  kind === "frost" ? tone("sine", 1400, 900, 0.09, 0.12) : tone("square", 1800, 1100, 0.04, 0.05);
+export const shot = (role) =>
+  role === "chill" ? tone("sine", 1400, 900, 0.09, 0.12) : tone("square", 1800, 1100, 0.04, 0.05);
 export const lob = () => tone("sine", 160, 70, 0.18, 0.3);
 export const boom = () => {
   noise(0.45, 900, 0.5);
@@ -73,3 +73,9 @@ export const start = () => [523, 659, 784].forEach((f, i) => tone("triangle", f,
 export const buy = () => [880, 1320].forEach((f, i) => tone("triangle", f, f, 0.08, 0.2, i * 0.06));
 export const win = () => [523, 659, 784, 1046].forEach((f, i) => tone("triangle", f, f, 0.2, 0.22, i * 0.1));
 export const lose = () => [392, 330, 262].forEach((f, i) => tone("sawtooth", f, f * 0.98, 0.25, 0.12, i * 0.15));
+export const coin = () => [1320, 1760].forEach((f, i) => tone("triangle", f, f, 0.07, 0.15, i * 0.05));
+// Big and bright: achievements are a big deal.
+export const fanfare = () => {
+  [523, 659, 784, 1046, 784, 1046, 1318].forEach((f, i) => tone("triangle", f, f, 0.22, 0.24, i * 0.09));
+  [262, 392, 523].forEach((f) => tone("sine", f, f, 0.9, 0.12, 0.3));
+};
