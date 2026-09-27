@@ -12,16 +12,41 @@ It removes the magenta background, trims, and installs everything into `assets/`
 
 (Magenta instead of "transparent" so the background can be removed perfectly. Don't draw the ground under objects — the game draws its own board and shadows.)
 
-## Towers — they don't rotate, so each is ONE image
+## Towers — one image each (they don't rotate)
 
-The game design uses crystals/objects that shoot magic, so no aiming poses are needed.
+Four ages, from junk to marvels. The first ones should look genuinely poor and improvised; each age should look clearly richer than the last. Keep the base footprint the same size for all of them.
 
+**Scrap Age — improvised, shabby, wood and rope**
+- `tower_slingshot.png`
+  > A crude slingshot: a forked tree branch jammed into a mossy tree stump, a frayed leather strap, a couple of pebbles on the stump. Shabby and improvised.
+- `tower_tarpot.png`
+  > A dented, blackened iron cooking pot on a tree stump, full of bubbling black tar, a wooden ladle sticking out, drips down the side.
+- `tower_catapult.png`
+  > A small rickety wooden catapult lashed together with rope, a rock in its spoon, mounted on a flat log base. Handmade and wobbly.
+
+**Iron Age — sturdy, grey stone and steel**
+- `tower_crossbow.png`
+  > A heavy steel crossbow mounted on a squat grey stone block, loaded with a bolt, riveted metal fittings. Solid and military.
+- `tower_snare.png`
+  > A grey stone block with a spinning iron drum on top wound with heavy chains ending in iron weights (bolas), ready to fling.
+- `tower_cannon.png`
+  > A black iron cannon angled upward on a wooden gun carriage, sitting on a grey stone block, a stack of cannonballs beside it.
+
+**Arcane Age — magical, floating crystals, glowing**
 - `tower_spark.png`
-  > A small stone pedestal (square, isometric) with a glowing golden-yellow crystal floating above it, little sparks around the crystal. Compact, sturdy, friendly.
+  > A carved stone pedestal with glowing runes, a golden-yellow crystal floating above it, crackling with little lightning sparks.
 - `tower_frost.png`
-  > A small icy stone pedestal (square, isometric) with a pale-cyan ice crystal cluster floating above it, frost mist curling around, a few snowflakes.
+  > A carved stone pedestal with glowing runes, a cluster of pale-cyan ice crystals floating above it, frost mist curling around, snowflakes.
 - `tower_mortar.png`
-  > A squat bronze-and-iron mortar cannon on a round stone base (isometric), short fat barrel pointing straight up, glowing orange ember vents, a little smoke.
+  > A squat bronze mortar with glowing orange ember vents on a carved rune pedestal, short fat barrel pointing up, a wisp of smoke.
+
+**Prism Age — pristine, white marble and light**
+- `tower_prism.png`
+  > A white marble pedestal with gold trim, a tall clear crystal prism floating above it splitting light into a small rainbow. Pristine and radiant.
+- `tower_stasis.png`
+  > A tall dark-violet obelisk on a white marble base, glowing purple runes, a faint clock-like ring of light hovering around it.
+- `tower_meteor.png`
+  > A white marble pedestal with a golden ring floating above it, a glowing red-pink star-orb hovering inside the ring, sparkles falling.
 
 ## Enemies — one image each, facing the viewer (they bob, not walk)
 
