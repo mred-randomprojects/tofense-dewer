@@ -41,4 +41,4 @@ browser scopes by origin is a single pool they all share:
 
 <!-- /mred-randomprojects:shared-origin -->
 
-**In this repo:** Served at `/tofense-dewer/`. Key: `tofense-dewer:v2`.
+**In this repo:** Served at `/tofense-dewer/`. Keys: `tofense-dewer:v2` (the save) and `tofense-dewer:backup` (a copy of a save the game couldn't read, kept before it starts fresh).

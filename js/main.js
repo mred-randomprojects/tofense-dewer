@@ -5,7 +5,6 @@ import { createRenderer, loadAssets } from "./render.js";
 import * as sfx from "./audio.js";
 import { initMobile, isTouch, goFullscreen } from "./mobile.js";
 
-const SAVE_KEY = "tofense-dewer:v2";
 const DEV = new URLSearchParams(location.search).has("dev"); // adds a 20× speed for testing
 const LEVELS_PER_PAGE = 30;
 const $ = (id) => document.getElementById(id);
@@ -16,19 +15,20 @@ const renderer = createRenderer(canvas);
 
 function load() {
   try {
-    return P.migrate(JSON.parse(localStorage.getItem(SAVE_KEY) ?? "null"));
+    return P.loadSave(localStorage);
   } catch {
-    return P.newProfile();
+    return { profile: P.newProfile(), readOnly: false }; // storage blocked: nothing to protect
   }
 }
 function save() {
+  if (readOnly) return; // a save from a newer version: never overwrite it
   try {
-    localStorage.setItem(SAVE_KEY, JSON.stringify(profile));
+    localStorage.setItem(P.SAVE_KEY, JSON.stringify(profile));
   } catch {
     /* private mode etc: progress lasts until the tab closes */
   }
 }
-const profile = load();
+const { profile, readOnly } = load();
 
 /* ---------- state ---------- */
 
@@ -113,7 +113,8 @@ function renderHome() {
 }
 
 function pips(level, max) {
-  return `<span class="pips">${"<i class=on></i>".repeat(level)}${"<i></i>".repeat(max - level)}</span>`;
+  // never a negative count: a level can sit above a max lowered since it was bought
+  return `<span class="pips">${"<i class=on></i>".repeat(Math.max(0, level))}${"<i></i>".repeat(Math.max(0, max - level))}</span>`;
 }
 
 function statLine(id) {
@@ -480,5 +481,10 @@ function playSounds(events) {
 
 initMobile();
 show("home");
+if (readOnly) {
+  $("result").innerHTML = `<div class="panel"><p>This save comes from a newer version: progress here won't be saved.</p>
+    <div class="btns"><button class="big primary" data-act="home">OK</button></div></div>`;
+  $("result").hidden = false;
+}
 requestAnimationFrame(frame);
 loadAssets().then(() => renderer.refreshBoard());
